@@ -12,7 +12,7 @@ const apiRoutes   = express.Router();
 // Connection to DB
 let port = process.env.PORT || 8080;
 mongoose.connect(config.database);
-app.set('superSecret', config.secret);
+app.set('secret', config.secret);
 
 // POST request parser
 app.use(bodyParser.urlencoded({ extended: false }));
@@ -22,12 +22,50 @@ app.use(bodyParser.json());
 app.use(morgan('dev'));
 
 
-// Routes
+// Routes -----------------------------------------
+
+apiRoutes.post('/authenticate', (req, res) => {
+   User.findOne({
+       name: req.body.name
+   }, (err, user) => {
+           // Error
+           if (err) {
+               throw err
+           }
+           // User not found
+           else if (!user) {
+               res.json({ success: false, message: 'User not found!' });
+           }
+           // Password doesn't match
+           else if (user) {
+               if (user.password !== req.body.password) {
+                   res.json({ success: false, message: 'Wrong password!' })
+               }
+               // Alright!
+               else {
+                   const payload = {
+                       admin: user.admin
+                   };
+
+                   let token = jwt.sign(payload, app.get('secret'), {
+                       expiresIn: 1 // just for test!
+                   });
+
+                   // Return token and status
+                   res.json({
+                       success: true,
+                       token: token
+                   });
+               }
+           }
+        }
+   )
+});
+
 // Root
 apiRoutes.get('/', (req, res) => {
     res.json({message: 'Welcome!'});
 });
-
 
 apiRoutes.get('/users', (req, res) => {
    User.find({}, (err, users) => {
@@ -35,7 +73,7 @@ apiRoutes.get('/users', (req, res) => {
    })
 });
 
-// Setup
+// Setup - just to add new user record in db
 app.get('/setup', (req, res) => {
     // test user
     let anton = new User({
