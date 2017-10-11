@@ -1,16 +1,16 @@
 // Imports modules and files
-var express     = require('express');
-var app         = express();
-var bodyParser  = require('body-parser');
-var morgan      = require('morgan');
-var mongoose    = require('mongoose');
-var jwt         = require('jsonwebtoken');
-var config      = require('./config');
-var User        = require('./app/models/user');
-
+const express     = require('express');
+const app         = express();
+const bodyParser  = require('body-parser');
+const morgan      = require('morgan');
+const mongoose    = require('mongoose');
+const jwt         = require('jsonwebtoken');
+const config      = require('./config');
+const User        = require('./app/models/user');
+const apiRoutes   = express.Router();
 
 // Connection to DB
-var port = process.env.PORT || 8080;
+let port = process.env.PORT || 8080;
 mongoose.connect(config.database);
 app.set('superSecret', config.secret);
 
@@ -23,9 +23,38 @@ app.use(morgan('dev'));
 
 
 // Routes
-app.get('/', function(req, res) {
-    res.send('http://localhost:' + port + '/api');
+// Root
+apiRoutes.get('/', (req, res) => {
+    res.json({message: 'Welcome!'});
 });
+
+
+apiRoutes.get('/users', (req, res) => {
+   User.find({}, (err, users) => {
+       res.json(users);
+   })
+});
+
+// Setup
+app.get('/setup', (req, res) => {
+    // test user
+    let anton = new User({
+        name: 'Anton S',
+        password: 'password',
+        admin: 'true'
+    });
+
+    // save test user
+    anton.save( (err) => {
+        if (err) throw err;
+
+        console.log('User was saved successfully');
+        res.json({ success: true });
+    });
+});
+
+app.use('/api', apiRoutes);
+
 
 // Start app and test it's up
 app.listen(port);
