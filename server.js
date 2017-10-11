@@ -24,6 +24,7 @@ app.use(morgan('dev'));
 
 // Routes -----------------------------------------
 
+// Authenticate
 apiRoutes.post('/authenticate', (req, res) => {
    User.findOne({
        name: req.body.name
@@ -48,7 +49,7 @@ apiRoutes.post('/authenticate', (req, res) => {
                    };
 
                    let token = jwt.sign(payload, app.get('secret'), {
-                       expiresIn: 1 // just for test!
+                       expiresIn: 1200
                    });
 
                    // Return token and status
@@ -62,11 +63,37 @@ apiRoutes.post('/authenticate', (req, res) => {
    )
 });
 
+// Token verification route
+apiRoutes.use((req, res, next) => {
+    // check req for token
+    let token = req.body.token || req.query.token || req.headers['x-access-token'];
+
+    // decode token
+    if (token) {
+        // verifies secret and checks exp
+        jwt.verify(token, app.get('secret'), (err, decoded) => {
+            if (err) {
+                return res.json({ success: false, message: 'Failed to authenticate token.' });
+            } else {
+                // if ok
+                req.decoded = decoded;
+                next();
+            }
+        });
+    } else {
+        return res.status(403).send({
+            success: false,
+            message: 'No token provided.'
+        });
+    }
+});
+
 // Root
 apiRoutes.get('/', (req, res) => {
     res.json({message: 'Welcome!'});
 });
 
+// List of all users
 apiRoutes.get('/users', (req, res) => {
    User.find({}, (err, users) => {
        res.json(users);
@@ -91,6 +118,7 @@ app.get('/setup', (req, res) => {
     });
 });
 
+// Add prefix "api" - просто так, для красоты ))
 app.use('/api', apiRoutes);
 
 
